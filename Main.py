@@ -1,5 +1,4 @@
 import math
-from typing import List, Tuple
 
 import cv2
 import numpy as np
@@ -10,25 +9,29 @@ PINK = (255, 0, 255)
 BLUE = (255, 0, 0)
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
-
+CYAN = (255, 255, 0)
+# IMAGE_NAME = 'medium.jpg'
+IMAGE_NAME = 'image1.jpeg'
+SHOW_LINES_AS_GROUPING = False
+# SHOW_LINES_AS_GROUPING = True
 
 def main():
-    originalImage = cv2.imread('medium.jpg')
+    originalImage = cv2.imread(IMAGE_NAME)
     grayImage = getGrayImage(originalImage)
-    # imageShowWithWait("grayImage", grayImage)
+    imageShowWithWait("grayImage", grayImage)
 
     edgeImage = getEdgeImage(grayImage)
-    # imageShowWithWait("edgeImage", edgeImage)
+    imageShowWithWait("edgeImage", edgeImage)
 
     initial, finish = getInitialAndFinishArea(edgeImage)
     drawCircle(originalImage, initial, RED)
     drawCircle(originalImage, finish, GREEN)
     edgeImage = getEdgeImageWithoutCircles(edgeImage, initial, finish)
-    # imageShowWithWait("edgeImage", edgeImage)
+    imageShowWithWait("edgeImageWithoutCircles", edgeImage)
 
     lines = getMazeWalls(edgeImage)
     drawLinesOnImage(originalImage, lines, PINK)
-    imageShowWithWait("lineImage", originalImage)
+    imageShowWithWait("lineImage", originalImage, 600000)
 
 
 def getGrayImage(image):
@@ -67,30 +70,34 @@ def drawCircle(image, circle, color):
 
 def getEdgeImageWithoutCircles(edgeImage, circle1, circle2):
     (x, y, r) = circle1
-    cv2.circle(edgeImage, (x, y), int(r), (0, 0, 0), -4)
+
+    cv2.circle(edgeImage, (x, y), int(r*1.05), (0, 0, 0), -1)
     (x, y, r) = circle2
-    cv2.circle(edgeImage, (x, y), int(r), (0, 0, 0), -4)
+    cv2.circle(edgeImage, (x, y), int(r*1.05), (0, 0, 0), -1)
     return edgeImage
 
 
 def getMazeWalls(edgeImage):
+    imageWidth = len(edgeImage[0])
+    imageHeight = len(edgeImage)
+    minDimension = min(imageHeight, imageWidth)
     rho = 1  # distance resolution in pixels of the Hough grid
     theta = np.pi / 4  # angular resolution in radians of the Hough grid
     threshold = 20  # minimum number of votes (intersections in Hough grid cell)
-    min_line_length = 30  # minimum number of pixels making up a line
-    max_line_gap = 5  # maximum gap in pixels between connectable line segments
+    min_line_length = int(minDimension * .08)  # minimum number of pixels making up a line
+    max_line_gap = int(minDimension * .03)  # maximum gap in pixels between connectable line segments
 
     # Run Hough on edge detected image
     # Output "lines" is an array containing endpoints of detected line segments
     lines = cv2.HoughLinesP(edgeImage, rho, theta, threshold, np.array([]),
                             min_line_length, max_line_gap)
-    linesX, linesY = clusterWallsInOrientation(lines)
+    linesX, linesY = clusterWallsInOrientation(lines, minDimension)
     lines = linesX
     lines.extend(linesY)
     return lines
 
 
-def clusterWallsInOrientation(lines):
+def clusterWallsInOrientation(lines, minDimension):
     horizontalWalls = []
     verticalWalls = []
 
@@ -100,24 +107,27 @@ def clusterWallsInOrientation(lines):
                 horizontalWalls.append(line)
             else:
                 verticalWalls.append(line)
-    return clusterHorizontalWalls(horizontalWalls), clusterVerticalWalls(verticalWalls)
+    return clusterHorizontalWalls(horizontalWalls, minDimension), clusterVerticalWalls(verticalWalls, minDimension)
 
 
-def findAllCloseHorizontalWalls(baseWall, lines):
+def findAllCloseHorizontalWalls(baseWall, lines, minDimension):
     x1Base, y1Base, x2Base, y2Base = baseWall[0]
+    image = cv2.imread(IMAGE_NAME)
+    drawLine(image, baseWall, PINK, 10)
     x1BaseAux = x1Base
     x2BaseAux = x2Base
-    x1Base = min(x1BaseAux, x2BaseAux)
+    x1Base, x2Base = getMinAndMax(x1Base, x2Base)
     x2Base = max(x1BaseAux, x2BaseAux)
     closeLines = [baseWall]
     maybeLines = []
     for line in lines:
         x1, y1, x2, y2 = line[0]
-        if math.fabs(y1Base - y1) < 20 and math.fabs(y2Base - y2) < 20:
-            smallX = min(x1, x2)
-            bigX = max(x1, x2)
+        yMedium = (y1Base + y2Base) / 2
+        rangeOfDistance = minDimension * 0.04
+        if yMedium - rangeOfDistance <= y1 <= yMedium + rangeOfDistance and yMedium - rangeOfDistance <= y2 <= yMedium + rangeOfDistance :
+            smallX, bigX = getMinAndMax(x1, x2)
             maybeLines.append(line)
-            if x1Base <= smallX <= x2Base or x1Base <= bigX <= x2Base:
+            if x1Base - rangeOfDistance <= smallX <= x2Base + rangeOfDistance or x1Base - rangeOfDistance <= bigX <= x2Base + rangeOfDistance:
                 closeLines.append(line)
                 if x2Base < bigX:
                     x2Base = bigX
@@ -127,14 +137,26 @@ def findAllCloseHorizontalWalls(baseWall, lines):
                     x1Base = smallX
                     lines.extend(maybeLines)
                     maybeLines = []
+                if SHOW_LINES_AS_GROUPING:
+                    drawLineAndShow(image, line, CYAN)
+            elif SHOW_LINES_AS_GROUPING:
+                drawLineAndShow(image, line, GREEN)
+        elif SHOW_LINES_AS_GROUPING:
+            drawLineAndShow(image, line, WHITE)
+    cv2.waitKey(500)
     return closeLines
 
 
-def findAllCloseVerticalWalls(baseWall, lines):
+def getMinAndMax(x1, x2):
+    smallX = min(x1, x2)
+    bigX = max(x1, x2)
+    return smallX, bigX
+
+
+def findAllCloseVerticalWalls(baseWall, lines, minDimension):
     x1Base, y1Base, x2Base, y2Base = baseWall[0]
-    originalImage = cv2.imread('medium.jpg')
-    # cv2.line(originalImage, (x1Base, y1Base), (x2Base, y2Base), PINK, 8)
-    # delay = 10
+    image = cv2.imread(IMAGE_NAME)
+    drawLine(image, baseWall, PINK, 10)
     y1BaseAux = y1Base
     y2BaseAux = y2Base
     y1Base = min(y1BaseAux, y2BaseAux)
@@ -144,12 +166,12 @@ def findAllCloseVerticalWalls(baseWall, lines):
     for line in lines:
         x1, y1, x2, y2 = line[0]
         xMedium = (x1Base + x2Base) / 2
-        rangeOfDistance = 20
-        if xMedium - rangeOfDistance <= x1 <= xMedium + rangeOfDistance or xMedium - rangeOfDistance <= x2 <= xMedium + rangeOfDistance:
+        rangeOfDistance = minDimension * 0.04
+        if xMedium - rangeOfDistance <= x1 <= xMedium + rangeOfDistance and xMedium - rangeOfDistance <= x2 <= xMedium + rangeOfDistance:
             smallY = min(y1, y2)
             bigY = max(y1, y2)
             maybeLines.append(line)
-            if y1Base <= smallY <= y2Base or y1Base <= bigY <= y2Base:
+            if y1Base - rangeOfDistance <= smallY <= y2Base + rangeOfDistance or y1Base - rangeOfDistance <= bigY <= y2Base + rangeOfDistance:
                 closeLines.append(line)
                 if y2Base < bigY:
                     y2Base = bigY
@@ -159,40 +181,38 @@ def findAllCloseVerticalWalls(baseWall, lines):
                     y1Base = smallY
                     lines.extend(maybeLines)
                     maybeLines = []
-
-    #             cv2.line(originalImage, (x1, y1), (x2, y2), (0, 0, 255), 4)
-    #             cv2.imshow("saidjd", originalImage)
-    #             cv2.waitKey(delay)
-    #         # a = 1 + 1
-    #         else:
-    #             cv2.line(originalImage, (x1, y1), (x2, y2), (0, 255, 0), 4)
-    #             cv2.imshow("saidjd", originalImage)
-    #             cv2.waitKey(delay)
-    #
-    #     else:
-    #         cv2.line(originalImage, (x1, y1), (x2, y2), (255, 255, 255), 4)
-    #         cv2.imshow("saidjd", originalImage)
-    #         cv2.waitKey(delay)
-    # cv2.waitKey(2000)
-
+                if SHOW_LINES_AS_GROUPING:
+                    drawLineAndShow(image, line, CYAN)
+            elif SHOW_LINES_AS_GROUPING:
+                drawLineAndShow(image, line, GREEN)
+        elif SHOW_LINES_AS_GROUPING:
+            drawLineAndShow(image, line, WHITE)
+    cv2.waitKey(500)
     return closeLines
 
 
-def clusterHorizontalWalls(lines):
+def drawLineAndShow(image, line, color):
+    delay = 5
+    drawLine(image, line, color)
+    cv2.imshow("lines", image)
+    cv2.waitKey(delay)
+
+
+def clusterHorizontalWalls(lines, minDimension):
     clusteredLines = []
     while len(lines) != 0:
         line = lines[0]
-        closeLines = findAllCloseHorizontalWalls(line, lines)
+        closeLines = findAllCloseHorizontalWalls(line, lines, minDimension)
         lines = removeAll(lines, closeLines)
         clusteredLines.append(unifyCloseHorizontalLines(closeLines))
     return clusteredLines
 
 
-def clusterVerticalWalls(lines):
+def clusterVerticalWalls(lines, minDimension):
     clusteredLines = []
     while len(lines) != 0:
         line = lines[0]
-        closeLines = findAllCloseVerticalWalls(line, lines)
+        closeLines = findAllCloseVerticalWalls(line, lines, minDimension)
         lines = removeAll(lines, closeLines)
         clusteredLines.append(unifyCloseVerticalLines(closeLines))
     return clusteredLines
@@ -211,9 +231,9 @@ def removeAll(array, objectsThatWillBeDeleted):
     return array
 
 
-def imageShowWithWait(windowName, image):
+def imageShowWithWait(windowName, image, time = 100):
     cv2.imshow(windowName, image)
-    cv2.waitKey(60000)
+    cv2.waitKey(time)
 
 
 def unifyCloseHorizontalLines(lines):
@@ -255,8 +275,12 @@ def getExtremesOfLines(lines):
 
 def drawLinesOnImage(image, lines, color):
     for line in lines:
-        x1, y1, x2, y2 = line[0]
-        cv2.line(image, (x1, y1), (x2, y2), color, 5)
+        drawLine(image, line, color, 2)
+
+
+def drawLine(image, line, color, lineWidth = 5):
+    x1, y1, x2, y2 = line[0]
+    cv2.line(image, (x1, y1), (x2, y2), color, lineWidth)
 
 
 if __name__ == '__main__':
