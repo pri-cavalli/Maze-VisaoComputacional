@@ -4,12 +4,12 @@ from typing import List, Tuple
 import cv2
 import numpy as np
 
-RED = (0,0,255)
-GREEN = (0,255,0)
-PINK = (255,0,255)
-BLUE = (255,0,0)
-WHITE = (255,255,255)
-BLACK = (0,0,0)
+RED = (0, 0, 255)
+GREEN = (0, 255, 0)
+PINK = (255, 0, 255)
+BLUE = (255, 0, 0)
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
 
 
 def main():
