@@ -14,6 +14,9 @@ CYAN = (255, 255, 0)
 IMAGE_NAME = 'medium.jpg'
 SHOW_LINES_AS_GROUPING = False
 # SHOW_LINES_AS_GROUPING = True
+roundNumber = 1
+roundNumber2 = 15
+
 
 def main():
     originalImage = cv2.imread(IMAGE_NAME)
@@ -271,6 +274,19 @@ def getExtremesOfLines(lines):
 def getMazeMatrix(linesX, linesY, initial, finish):
     linesX.sort(key=lambda x: x[0][1], reverse=False)
     linesY.sort(key=lambda x: x[0][0], reverse=False)
+    lastY = 0
+    lastX = 0
+    for line in linesX:
+        x1, y, x2, _ = line[0]
+        if y - lastY < roundNumber2:
+            line[0] = (x1, lastY, x2, lastY)
+        lastY = y
+    for line in linesY:
+        x, y1, _, y2 = line[0]
+        if x - lastX < roundNumber2:
+            line[0] = (lastX, y1, lastX, y2)
+        lastX = x
+
     maxX, _, minX, _ = getExtremesOfLines(linesX)
     _, maxY, _, minY = getExtremesOfLines(linesY)
 
