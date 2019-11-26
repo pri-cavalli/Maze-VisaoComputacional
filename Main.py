@@ -11,27 +11,30 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 CYAN = (255, 255, 0)
 # IMAGE_NAME = 'medium.jpg'
-IMAGE_NAME = 'image1.jpeg'
+IMAGE_NAME = 'medium.jpg'
 SHOW_LINES_AS_GROUPING = False
 # SHOW_LINES_AS_GROUPING = True
 
 def main():
     originalImage = cv2.imread(IMAGE_NAME)
     grayImage = getGrayImage(originalImage)
-    imageShowWithWait("grayImage", grayImage)
+    #imageShowWithWait("grayImage", grayImage)
 
     edgeImage = getEdgeImage(grayImage)
-    imageShowWithWait("edgeImage", edgeImage)
+    #imageShowWithWait("edgeImage", edgeImage)
 
     initial, finish = getInitialAndFinishArea(edgeImage)
     drawCircle(originalImage, initial, RED)
     drawCircle(originalImage, finish, GREEN)
     edgeImage = getEdgeImageWithoutCircles(edgeImage, initial, finish)
-    imageShowWithWait("edgeImageWithoutCircles", edgeImage)
+    #imageShowWithWait("edgeImageWithoutCircles", edgeImage)
 
-    lines = getMazeWalls(edgeImage)
-    drawLinesOnImage(originalImage, lines, PINK)
-    imageShowWithWait("lineImage", originalImage, 600000)
+    linesX, linesY = getMazeWalls(edgeImage)
+    drawLinesOnImage(originalImage, linesX, PINK)
+    drawLinesOnImage(originalImage, linesY, PINK)
+    mazeMatrix = getMazeMatrix(linesX, linesY, initial, finish);
+    #imageShowWithWait("lineImage", originalImage, 1005555)
+
 
 
 def getGrayImage(image):
@@ -49,7 +52,6 @@ def getInitialAndFinishArea(image):
     circles = cv2.HoughCircles(image, cv2.HOUGH_GRADIENT, 1, 200, None, 30, 15, 5, 50)
     if len(circles) > 2:
         raise Exception("Achou mais de 2 cisúlos na imagem")
-    print(circles)
     if circles[0][0][2] > circles[0][1][2]:
         finishArea = circles[0][0]
         initialArea = circles[0][1]
@@ -91,10 +93,7 @@ def getMazeWalls(edgeImage):
     # Output "lines" is an array containing endpoints of detected line segments
     lines = cv2.HoughLinesP(edgeImage, rho, theta, threshold, np.array([]),
                             min_line_length, max_line_gap)
-    linesX, linesY = clusterWallsInOrientation(lines, minDimension)
-    lines = linesX
-    lines.extend(linesY)
-    return lines
+    return clusterWallsInOrientation(lines, minDimension)
 
 
 def clusterWallsInOrientation(lines, minDimension):
@@ -143,7 +142,6 @@ def findAllCloseHorizontalWalls(baseWall, lines, minDimension):
                 drawLineAndShow(image, line, GREEN)
         elif SHOW_LINES_AS_GROUPING:
             drawLineAndShow(image, line, WHITE)
-    cv2.waitKey(500)
     return closeLines
 
 
@@ -187,7 +185,6 @@ def findAllCloseVerticalWalls(baseWall, lines, minDimension):
                 drawLineAndShow(image, line, GREEN)
         elif SHOW_LINES_AS_GROUPING:
             drawLineAndShow(image, line, WHITE)
-    cv2.waitKey(500)
     return closeLines
 
 
@@ -195,7 +192,6 @@ def drawLineAndShow(image, line, color):
     delay = 5
     drawLine(image, line, color)
     cv2.imshow("lines", image)
-    cv2.waitKey(delay)
 
 
 def clusterHorizontalWalls(lines, minDimension):
@@ -231,7 +227,7 @@ def removeAll(array, objectsThatWillBeDeleted):
     return array
 
 
-def imageShowWithWait(windowName, image, time = 100):
+def imageShowWithWait(windowName, image, time = 1000):
     cv2.imshow(windowName, image)
     cv2.waitKey(time)
 
@@ -271,6 +267,55 @@ def getExtremesOfLines(lines):
         if y2 < minY:
             minY = y2
     return maxX, maxY, minX, minY
+
+def getMazeMatrix(linesX, linesY, initial, finish):
+    linesX.sort(key=lambda x: x[0][1], reverse=False)
+    linesY.sort(key=lambda x: x[0][0], reverse=False)
+    maxX, _, minX, _ = getExtremesOfLines(linesX)
+    _, maxY, _, minY = getExtremesOfLines(linesY)
+
+    range = 28
+    tamX = math.ceil((maxX - minX) / range)
+    tamY = math.ceil((maxY - minY) / range)
+    maze = np.zeros((tamY, tamX))
+    i = 0
+    lastY = linesX[0][0][0]
+    initialRange = minY - range/2
+    for line in linesX:
+        x1, y, x2, _ = line[0]
+        while y > initialRange + range and y - lastY > 8 and i < tamY:
+            i += 1
+            initialRange += range
+        j = 0
+        lastY = y
+        while(j < tamX):
+            if (minX + (j+1)*range > x2 and minX + (j+1)*range < x1) or j == 0 or j == tamY-1:
+                maze[i][j] = 1
+            elif maze[i][j] != 1:
+                maze[i][j] = 0
+            j += 1
+
+
+    i = 0
+    initialRange = linesY[0][0][0] -range/2
+    for line in linesY:
+        x, y1, _, y2 = line[0]
+        while x > initialRange + range and i < tamX-1:
+            i += 1
+            initialRange += range
+        j = 1
+        while(j < tamY):
+            if (minY + (j+1)*range > y1 and minY + (j+1)*range < y2) or i == 0 or i == tamX-1:
+                maze[j][i] = 1
+            elif maze[j][i] != 1:
+                maze[j][i] = 0
+            j += 1
+    maze[int(initial[1]/range)][int(initial[0]/range)] = 2
+    maze[int(finish[1]/range)][int(finish[0]/range)] = 2
+    print(maze)
+    print(linesY)
+    print(linesX)
+
 
 
 def drawLinesOnImage(image, lines, color):
