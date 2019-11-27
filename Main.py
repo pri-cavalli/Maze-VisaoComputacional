@@ -15,7 +15,7 @@ IMAGE_NAME = 'medium.jpg'
 SHOW_LINES_AS_GROUPING = False
 # SHOW_LINES_AS_GROUPING = True
 roundNumber = 1
-roundNumber2 = 15
+roundNumber2 = 20
 minDif = 1000000
 
 def main():
@@ -275,8 +275,8 @@ def getMazeMatrix(linesX, linesY, initial, finish):
     linesX.sort(key=lambda x: x[0][1], reverse=False)
     linesY.sort(key=lambda x: x[0][0], reverse=False)
 
-    maxX, _, minX, _ = getExtremesOfLines(linesX)
-    _, maxY, _, minY = getExtremesOfLines(linesY)
+    maxX, _, minX, minYX = getExtremesOfLines(linesX)
+    _, maxY, minXY, minY = getExtremesOfLines(linesY)
 
     blockSize = int(minDif * 1)
     tamX = math.ceil((maxX - minX) / blockSize)
@@ -287,27 +287,22 @@ def getMazeMatrix(linesX, linesY, initial, finish):
     for line in linesX:
         x1, y, x2, _ = line[0]
         i = int((y - minY) / blockSize)
-        j = 0
-        while(j < tamX):
-            if (x2 <= minX + j * blockSize <= x1) or j == 0 or j == tamY-1:
-                maze[i][j] = 1
-            elif maze[i][j] != 1:
-                maze[i][j] = 0
-            j += 1
+        jMin = int(round((x2 - minX)/blockSize))
+        jMax = int(round((x1 - minX)/blockSize))
+        for j in range(jMin, jMax):
+            maze[i][j] = 1
+
 
 
     for line in linesY:
         x, y1, _, y2 = line[0]
         j = int((x - minX) / blockSize)
-        i = 0
-        while(i < tamY):
-            if (y1 <= minY + i * blockSize <= y2) or i == 0 or i == tamX-1:
-                maze[i][j] = 1
-            elif maze[i][j] != 1:
-                maze[i][j] = 0
-            i += 1
-    maze[int(initial[1]/blockSize)][int(initial[0]/blockSize)] = 2
-    maze[int(finish[1]/blockSize)][int(finish[0]/blockSize)] = 2
+        iMin = int(round((y1 - minY)/blockSize))
+        iMax = int(round((y2 - minY)/blockSize))
+        for i in range(iMin, iMax):
+            maze[i][j] = 1
+    maze[int(round((initial[1] - minYX)/blockSize))][int(round((initial[0] - minXY)/blockSize))] = 2
+    maze[int(round((finish[1] - minYX)/blockSize))][int(round((finish[0] - minXY)/blockSize))] = 2
     # print(maze)
     x = 0
 
@@ -327,6 +322,7 @@ def getMazeMatrix(linesX, linesY, initial, finish):
         x +=1
     print(linesY)
     print(linesX)
+    print(minDif)
 
 
 def padronizeXverticalLines(linesY):
