@@ -16,7 +16,7 @@ SHOW_LINES_AS_GROUPING = False
 # SHOW_LINES_AS_GROUPING = True
 roundNumber = 1
 roundNumber2 = 15
-
+minDif = 1000000
 
 def main():
     originalImage = cv2.imread(IMAGE_NAME)
@@ -204,7 +204,7 @@ def clusterHorizontalWalls(lines, minDimension):
         closeLines = findAllCloseHorizontalWalls(line, lines, minDimension)
         lines = removeAll(lines, closeLines)
         clusteredLines.append(unifyCloseHorizontalLines(closeLines))
-    return clusteredLines
+    return padronizeHeightOfHorizontalLines(clusteredLines)
 
 
 def clusterVerticalWalls(lines, minDimension):
@@ -214,7 +214,7 @@ def clusterVerticalWalls(lines, minDimension):
         closeLines = findAllCloseVerticalWalls(line, lines, minDimension)
         lines = removeAll(lines, closeLines)
         clusteredLines.append(unifyCloseVerticalLines(closeLines))
-    return clusteredLines
+    return padronizeXverticalLines(clusteredLines)
 
 
 def removeAll(array, objectsThatWillBeDeleted):
@@ -274,64 +274,90 @@ def getExtremesOfLines(lines):
 def getMazeMatrix(linesX, linesY, initial, finish):
     linesX.sort(key=lambda x: x[0][1], reverse=False)
     linesY.sort(key=lambda x: x[0][0], reverse=False)
-    lastY = 0
-    lastX = 0
-    for line in linesX:
-        x1, y, x2, _ = line[0]
-        if y - lastY < roundNumber2:
-            line[0] = (x1, lastY, x2, lastY)
-        lastY = y
-    for line in linesY:
-        x, y1, _, y2 = line[0]
-        if x - lastX < roundNumber2:
-            line[0] = (lastX, y1, lastX, y2)
-        lastX = x
 
     maxX, _, minX, _ = getExtremesOfLines(linesX)
     _, maxY, _, minY = getExtremesOfLines(linesY)
 
-    range = 28
-    tamX = math.ceil((maxX - minX) / range)
-    tamY = math.ceil((maxY - minY) / range)
+    blockSize = int(minDif * 1)
+    tamX = math.ceil((maxX - minX) / blockSize)
+    tamY = math.ceil((maxY - minY) / blockSize)
     maze = np.zeros((tamY, tamX))
-    i = 0
-    lastY = linesX[0][0][0]
-    initialRange = minY - range/2
+
+
     for line in linesX:
         x1, y, x2, _ = line[0]
-        while y > initialRange + range and y - lastY > 8 and i < tamY:
-            i += 1
-            initialRange += range
+        i = int((y - minY) / blockSize)
         j = 0
-        lastY = y
         while(j < tamX):
-            if (minX + (j+1)*range > x2 and minX + (j+1)*range < x1) or j == 0 or j == tamY-1:
+            if (x2 <= minX + j * blockSize <= x1) or j == 0 or j == tamY-1:
                 maze[i][j] = 1
             elif maze[i][j] != 1:
                 maze[i][j] = 0
             j += 1
 
 
-    i = 0
-    initialRange = linesY[0][0][0] -range/2
     for line in linesY:
         x, y1, _, y2 = line[0]
-        while x > initialRange + range and i < tamX-1:
+        j = int((x - minX) / blockSize)
+        i = 0
+        while(i < tamY):
+            if (y1 <= minY + i * blockSize <= y2) or i == 0 or i == tamX-1:
+                maze[i][j] = 1
+            elif maze[i][j] != 1:
+                maze[i][j] = 0
             i += 1
-            initialRange += range
-        j = 1
-        while(j < tamY):
-            if (minY + (j+1)*range > y1 and minY + (j+1)*range < y2) or i == 0 or i == tamX-1:
-                maze[j][i] = 1
-            elif maze[j][i] != 1:
-                maze[j][i] = 0
-            j += 1
-    maze[int(initial[1]/range)][int(initial[0]/range)] = 2
-    maze[int(finish[1]/range)][int(finish[0]/range)] = 2
-    print(maze)
+    maze[int(initial[1]/blockSize)][int(initial[0]/blockSize)] = 2
+    maze[int(finish[1]/blockSize)][int(finish[0]/blockSize)] = 2
+    # print(maze)
+    x = 0
+
+    maxY = len(maze[0]) - 1
+    maxX = len(maze) - 1
+    for i in range(0, maxX):
+        for j in range(0, maxY):
+            if maze[i][j] == 0:
+                print("  ", end='')
+            elif maze[i][j] == 1:
+                print("++", end='')
+            elif maze[i][j] == 2:
+                print("()", end='')
+
+
+        print(" ", x)
+        x +=1
     print(linesY)
     print(linesX)
 
+
+def padronizeXverticalLines(linesY):
+    linesY.sort(key=lambda x: x[0][0], reverse=False)
+
+    lastX = 0
+    global minDif
+    for line in linesY:
+        x, y1, _, y2 = line[0]
+        if x - lastX < roundNumber2:
+            line[0] = (lastX, y1, lastX, y2)
+        elif x - lastX < minDif:
+            minDif = x - lastX
+
+        lastX = x
+    return linesY
+
+
+def padronizeHeightOfHorizontalLines(linesX):
+    global minDif
+    linesX.sort(key=lambda x: x[0][1], reverse=False)
+    lastY = 0
+
+    for line in linesX:
+        x1, y, x2, _ = line[0]
+        if y - lastY < roundNumber2:
+            line[0] = (x1, lastY, x2, lastY)
+        elif y - lastY < minDif:
+            minDif = y - lastY
+        lastY = y
+    return linesX
 
 
 def drawLinesOnImage(image, lines, color):
