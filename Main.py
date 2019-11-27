@@ -279,16 +279,16 @@ def getMazeMatrix(linesX, linesY, initial, finish):
     _, maxY, minXY, minY = getExtremesOfLines(linesY)
 
     blockSize = int(minDif * 1)
-    tamX = math.ceil((maxX - minX) / blockSize)
-    tamY = math.ceil((maxY - minY) / blockSize)
+    tamX = math.ceil((maxX - minX) / blockSize) + 1
+    tamY = math.ceil((maxY - minY) / blockSize) + 1
     maze = np.zeros((tamY, tamX))
 
 
     for line in linesX:
         x1, y, x2, _ = line[0]
-        i = int((y - minY) / blockSize)
-        jMin = int(round((x2 - minX)/blockSize))
-        jMax = int(round((x1 - minX)/blockSize))
+        i = int(round((y - minYX) / blockSize))
+        jMin = int(round((x2 - minXY)/blockSize))
+        jMax = int(round((x1 - minXY)/blockSize))
         for j in range(jMin, jMax):
             maze[i][j] = 1
 
@@ -296,9 +296,9 @@ def getMazeMatrix(linesX, linesY, initial, finish):
 
     for line in linesY:
         x, y1, _, y2 = line[0]
-        j = int((x - minX) / blockSize)
-        iMin = int(round((y1 - minY)/blockSize))
-        iMax = int(round((y2 - minY)/blockSize))
+        j = int(round((x - minXY) / blockSize))
+        iMin = int(round((y1 - minYX)/blockSize))
+        iMax = int(round((y2 - minYX)/blockSize))
         for i in range(iMin, iMax):
             maze[i][j] = 1
     maze[int(round((initial[1] - minYX)/blockSize))][int(round((initial[0] - minXY)/blockSize))] = 2
