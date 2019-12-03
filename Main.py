@@ -399,9 +399,9 @@ def drawSolution(originalImage, solutionMatrix, blockSize, minXY, minYX,  color)
         for j in range(0, maxY):
             if solutionMatrix[j][i] == 3:
                 if solutionMatrix[j+1][i] == 3:
-                    drawLine(originalImage, [[(i+minYX) * blockSize + halfBlockSize, (j+minYX) * blockSize + halfBlockSize, (i+minYX) * blockSize + halfBlockSize , ((j+minYX) + 1)*blockSize+halfBlockSize]], color)
+                    drawLine(originalImage, [[i * blockSize + minXY + halfBlockSize, j * blockSize + halfBlockSize + minYX, i * blockSize + halfBlockSize + minXY, (j + 1)*blockSize+halfBlockSize + minYX]], color)
                 if solutionMatrix[j][i+1] == 3:
-                    drawLine(originalImage, [[(i+minYX) * blockSize + halfBlockSize, (j+minYX) * blockSize + halfBlockSize,((i+minYX) + 1) * blockSize + halfBlockSize, (j+minYX)*blockSize+halfBlockSize]], color)
+                    drawLine(originalImage, [[i * blockSize + minXY + halfBlockSize, j * blockSize + halfBlockSize + minYX,(i + 1) * blockSize + halfBlockSize + minXY, j * blockSize+halfBlockSize + minYX]], color)
     imageShowWithWait("solution", originalImage, 21000)
 
 
