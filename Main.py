@@ -35,8 +35,8 @@ def main():
     # imageShowWithWait("edgeImageWithoutCircles", edgeImage)
 
     linesX, linesY = getMazeWalls(edgeImage)
-    drawLinesOnImage(originalImage, linesX, BLACK)
-    drawLinesOnImage(originalImage, linesY, BLACK)
+    drawLinesOnImage(originalImage, linesX, CYAN)
+    drawLinesOnImage(originalImage, linesY, CYAN)
     # imageShowWithWait("lineImage", originalImage, 1005555)
 
     mazeMatrix, start, end, blockSize, minXY, minYX = getMazeMatrix(linesX, linesY, initial, finish)
@@ -101,6 +101,7 @@ def getMazeWalls(edgeImage):
     # Output "lines" is an array containing endpoints of detected line segments
     lines = cv2.HoughLinesP(edgeImage, rho, theta, threshold, np.array([]),
                             min_line_length, max_line_gap)
+
     return clusterWallsInOrientation(lines, minDimension)
 
 
@@ -300,7 +301,7 @@ def getMazeMatrix(linesX, linesY, initial, finish):
 
     for line in linesY:
         x, y1, _, y2 = line[0]
-        j = int(round((x - minXY) / blockSize))
+        j = int(round((x - minY) / blockSize))
         iMin = int(round((y1 - minY) / blockSize))
         iMax = int(round((y2 - minY) / blockSize))
         for i in range(iMin, iMax):
@@ -310,11 +311,11 @@ def getMazeMatrix(linesX, linesY, initial, finish):
 
     return \
         maze, \
-        [int(round((initial[1] - minYX) / blockSize)), int(round((initial[0] - minXY) / blockSize))], \
-        [int(round((finish[1] - minYX) / blockSize)), int(round((finish[0] - minXY) / blockSize))], \
+        [int(round((initial[1] - minY) / blockSize)), int(round((initial[0] - minX) / blockSize))], \
+        [int(round((finish[1] - minY) / blockSize)), int(round((finish[0] - minX) / blockSize))], \
         blockSize, \
-        minXY, \
-        minYX
+        minX, \
+        minY
 
 
 def padronizeXverticalLines(linesY):
@@ -369,6 +370,8 @@ def solveMaze(maze, start, end):
 
 
 def solveMazeUtil(maze, x, y, sol, finalX, finalY):
+    if x >= len(maze[0]) or y >= len(maze):
+        return False
     if x == finalX and y == finalY:
         sol[y][x] = 2
         return True
@@ -399,10 +402,10 @@ def solveMazeUtil(maze, x, y, sol, finalX, finalY):
 def drawSolution(originalImage, solutionMatrix, blockSize, minXY, minYX, color):
     # simplifySolution(solutionMatrix)
     print(solutionMatrix)
-    print(simplifySolution(solutionMatrix))
+    # print(simplifySolution(solutionMatrix))
     maxX = len(solutionMatrix[0]) - 1
     maxY = len(solutionMatrix) - 1
-    halfBlockSize = int(blockSize / 2)
+    halfBlockSize = int(blockSize / 2) * 0
     for i in range(0, maxX):
         for j in range(0, maxY):
             if solutionMatrix[j][i] >= 2:
@@ -459,10 +462,10 @@ def simplifySolution(solutionMatrix):
 
 
 def reduceRedudantPart(i, iAux, j, jAux, solutionMatrix):
-    HAS_SOLUTION_TOP_LEFT = solutionMatrix[j - 1][i] == 3 or solutionMatrix[j][i - 1] == 3
-    HAS_SOLUTION_TOP_RIGHT = solutionMatrix[j - 1][iAux - 1] == 3 or solutionMatrix[j][iAux] == 3
-    HAS_SOLUTION_BOTTOM_LEFT = solutionMatrix[jAux][i] == 3 or solutionMatrix[jAux - 1][i - 1] == 3
-    HAS_SOLUTION_BOTTOM_RIGHT = solutionMatrix[jAux][iAux - 1] == 3 or solutionMatrix[jAux - 1][iAux] == 3
+    HAS_SOLUTION_TOP_LEFT = solutionMatrix[j - 1][i] >= 2 or solutionMatrix[j][i - 1] >= 2
+    HAS_SOLUTION_TOP_RIGHT = solutionMatrix[j - 1][iAux - 1] >= 2 or solutionMatrix[j][iAux] >= 2
+    HAS_SOLUTION_BOTTOM_LEFT = solutionMatrix[jAux][i] >= 2 or solutionMatrix[jAux - 1][i - 1] >= 2
+    HAS_SOLUTION_BOTTOM_RIGHT = solutionMatrix[jAux][iAux - 1] >= 2 or solutionMatrix[jAux - 1][iAux] >= 2
     totalTrue = 0
     if HAS_SOLUTION_TOP_LEFT:
         totalTrue += 1
@@ -497,6 +500,10 @@ def reduceRedudantPart(i, iAux, j, jAux, solutionMatrix):
             for y in range(j + 1, jAux):
                 for x in range(i, iAux - 1):
                     solutionMatrix[y][x] = 0
+    if totalTrue < 2:
+        for y in range(j, jAux):
+            for x in range(i, iAux):
+                solutionMatrix[y][x] = 0
 
 
 if __name__ == '__main__':
