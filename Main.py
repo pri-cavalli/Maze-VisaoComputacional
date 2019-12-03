@@ -1,5 +1,5 @@
 import math
-
+from time import sleep
 import cv2
 import numpy as np
 
@@ -10,7 +10,7 @@ BLUE = (255, 0, 0)
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 CYAN = (255, 255, 0)
-IMAGE_NAME = 'medium.jpg'
+IMAGE_NAME = 'hard.png'
 SHOW_LINES_AS_GROUPING = False
 roundNumber = 1
 roundNumber2 = 20
@@ -19,30 +19,30 @@ minDif = 1000000
 globalMin = 0
 globalMinY = 0
 
+
 def main():
     originalImage = cv2.imread(IMAGE_NAME)
     grayImage = getGrayImage(originalImage)
-    #imageShowWithWait("grayImage", grayImage)
+    # imageShowWithWait("grayImage", grayImage)
 
     edgeImage = getEdgeImage(grayImage)
-    #imageShowWithWait("edgeImage", edgeImage)
+    # imageShowWithWait("edgeImage", edgeImage)
 
     initial, finish = getInitialAndFinishArea(edgeImage)
     drawCircle(originalImage, initial, RED)
     drawCircle(originalImage, finish, GREEN)
     edgeImage = getEdgeImageWithoutCircles(edgeImage, initial, finish)
-    #imageShowWithWait("edgeImageWithoutCircles", edgeImage)
+    # imageShowWithWait("edgeImageWithoutCircles", edgeImage)
 
     linesX, linesY = getMazeWalls(edgeImage)
     drawLinesOnImage(originalImage, linesX, BLACK)
     drawLinesOnImage(originalImage, linesY, BLACK)
-    #imageShowWithWait("lineImage", originalImage, 1005555)
+    # imageShowWithWait("lineImage", originalImage, 1005555)
 
     mazeMatrix, start, end, blockSize, minXY, minYX = getMazeMatrix(linesX, linesY, initial, finish)
     print(mazeMatrix)
     solutionMatrix = solveMaze(mazeMatrix, start, end)
     drawSolution(originalImage, solutionMatrix, blockSize, minXY, minYX, PINK)
-
 
 
 def getGrayImage(image):
@@ -81,9 +81,9 @@ def drawCircle(image, circle, color):
 def getEdgeImageWithoutCircles(edgeImage, circle1, circle2):
     (x, y, r) = circle1
 
-    cv2.circle(edgeImage, (x, y), int(r*1.05), (0, 0, 0), -1)
+    cv2.circle(edgeImage, (x, y), int(r * 1.05), (0, 0, 0), -1)
     (x, y, r) = circle2
-    cv2.circle(edgeImage, (x, y), int(r*1.05), (0, 0, 0), -1)
+    cv2.circle(edgeImage, (x, y), int(r * 1.05), (0, 0, 0), -1)
     return edgeImage
 
 
@@ -131,7 +131,7 @@ def findAllCloseHorizontalWalls(baseWall, lines, minDimension):
         x1, y1, x2, y2 = line[0]
         yMedium = (y1Base + y2Base) / 2
         rangeOfDistance = minDimension * 0.04
-        if yMedium - rangeOfDistance <= y1 <= yMedium + rangeOfDistance and yMedium - rangeOfDistance <= y2 <= yMedium + rangeOfDistance :
+        if yMedium - rangeOfDistance <= y1 <= yMedium + rangeOfDistance and yMedium - rangeOfDistance <= y2 <= yMedium + rangeOfDistance:
             smallX, bigX = getMinAndMax(x1, x2)
             maybeLines.append(line)
             if x1Base - rangeOfDistance <= smallX <= x2Base + rangeOfDistance or x1Base - rangeOfDistance <= bigX <= x2Base + rangeOfDistance:
@@ -235,7 +235,7 @@ def removeAll(array, objectsThatWillBeDeleted):
     return array
 
 
-def imageShowWithWait(windowName, image, time = 1000):
+def imageShowWithWait(windowName, image, time=1000):
     cv2.imshow(windowName, image)
     cv2.waitKey(time)
 
@@ -276,13 +276,15 @@ def getExtremesOfLines(lines):
             minY = y2
     return maxX, maxY, minX, minY
 
+
 def getMazeMatrix(linesX, linesY, initial, finish):
     linesX.sort(key=lambda x: x[0][1], reverse=False)
     linesY.sort(key=lambda x: x[0][0], reverse=False)
 
-    maxX, _, minX, minYX = getExtremesOfLines(linesX)
-    _, maxY, minXY, minY = getExtremesOfLines(linesY)
-
+    maxX, maxYX, minX, minYX = getExtremesOfLines(linesX)
+    maxXY, maxY, minXY, minY = getExtremesOfLines(linesY)
+    maxX = max(maxX, maxXY)
+    maxY = max(maxY, maxYX)
     blockSize = int(minDif * 1)
     tamX = math.ceil((maxX - minX) / blockSize) + 1
     tamY = math.ceil((maxY - minY) / blockSize) + 1
@@ -290,31 +292,30 @@ def getMazeMatrix(linesX, linesY, initial, finish):
 
     for line in linesX:
         x1, y, x2, _ = line[0]
-        i = int(round((y - minYX) / blockSize))
-        jMin = int(round((x2 - minXY)/blockSize))
-        jMax = int(round((x1 - minXY)/blockSize))
+        i = int(round((y - minY) / blockSize))
+        jMin = int(round((x2 - minX) / blockSize))
+        jMax = int(round((x1 - minX) / blockSize))
         for j in range(jMin, jMax):
             maze[i][j] = 1
-
-
 
     for line in linesY:
         x, y1, _, y2 = line[0]
         j = int(round((x - minXY) / blockSize))
-        iMin = int(round((y1 - minYX)/blockSize))
-        iMax = int(round((y2 - minYX)/blockSize))
+        iMin = int(round((y1 - minY) / blockSize))
+        iMax = int(round((y2 - minY) / blockSize))
         for i in range(iMin, iMax):
             maze[i][j] = 1
-    maze[int(round((initial[1] - minYX)/blockSize))][int(round((initial[0] - minXY)/blockSize))] = 2
-    maze[int(round((finish[1] - minYX)/blockSize))][int(round((finish[0] - minXY)/blockSize))] = 2
+    maze[int(round((initial[1] - minY) / blockSize))][int(round((initial[0] - minX) / blockSize))] = 2
+    maze[int(round((finish[1] - minY) / blockSize))][int(round((finish[0] - minX) / blockSize))] = 2
 
     return \
-        maze,\
-        [int(round((initial[1] - minYX)/blockSize)),int(round((initial[0] - minXY)/blockSize))],\
-        [int(round((finish[1] - minYX)/blockSize)),int(round((finish[0] - minXY)/blockSize))],\
-        blockSize,\
-        minXY,\
+        maze, \
+        [int(round((initial[1] - minYX) / blockSize)), int(round((initial[0] - minXY) / blockSize))], \
+        [int(round((finish[1] - minYX) / blockSize)), int(round((finish[0] - minXY) / blockSize))], \
+        blockSize, \
+        minXY, \
         minYX
+
 
 def padronizeXverticalLines(linesY):
     linesY.sort(key=lambda x: x[0][0], reverse=False)
@@ -352,12 +353,14 @@ def drawLinesOnImage(image, lines, color):
         drawLine(image, line, color, 4)
 
 
-def drawLine(image, line, color, lineWidth = 5):
+def drawLine(image, line, color, lineWidth=5):
     x1, y1, x2, y2 = line[0]
     cv2.line(image, (x1, y1), (x2, y2), color, lineWidth)
 
+
 def solveMaze(maze, start, end):
     sol = np.zeros((len(maze), len(maze[0])))
+    sol[start[1]][start[0]] = 2
     hasSolution = solveMazeUtil(maze, start[1], start[0], sol, end[1], end[0])
     if hasSolution == False:
         print("Solution doesn't exist")
@@ -367,42 +370,133 @@ def solveMaze(maze, start, end):
 
 def solveMazeUtil(maze, x, y, sol, finalX, finalY):
     if x == finalX and y == finalY:
-        sol[y][x] = 3
+        sol[y][x] = 2
         return True
     if maze[y][x] == 1:
+        sol[y][x] = 1
         return False
     if sol[y][x] == 3:
         return False
-    sol[y][x] = 3
+    if sol[y][x] == 0:
+        sol[y][x] = 3
 
-    hasSolution1 = solveMazeUtil(maze, x, y-1, sol, finalX, finalY)
+    hasSolution1 = solveMazeUtil(maze, x, y - 1, sol, finalX, finalY)
     if hasSolution1:
         return True
-    hasSolution2 = solveMazeUtil(maze, x, y+1, sol, finalX, finalY)
+    hasSolution2 = solveMazeUtil(maze, x, y + 1, sol, finalX, finalY)
     if hasSolution2:
         return True
 
-    hasSolution3 = solveMazeUtil(maze, x+1, y, sol, finalX, finalY)
+    hasSolution3 = solveMazeUtil(maze, x + 1, y, sol, finalX, finalY)
     if hasSolution3:
         return True
-    hasSolution4 = solveMazeUtil(maze, x-1, y, sol, finalX, finalY)
+    hasSolution4 = solveMazeUtil(maze, x - 1, y, sol, finalX, finalY)
     if hasSolution4:
         return True
     return False
 
-def drawSolution(originalImage, solutionMatrix, blockSize, minXY, minYX,  color):
+
+def drawSolution(originalImage, solutionMatrix, blockSize, minXY, minYX, color):
+    # simplifySolution(solutionMatrix)
     print(solutionMatrix)
+    print(simplifySolution(solutionMatrix))
     maxX = len(solutionMatrix[0]) - 1
     maxY = len(solutionMatrix) - 1
-    halfBlockSize = int(blockSize/2)
+    halfBlockSize = int(blockSize / 2)
     for i in range(0, maxX):
         for j in range(0, maxY):
-            if solutionMatrix[j][i] == 3:
-                if solutionMatrix[j+1][i] == 3:
-                    drawLine(originalImage, [[i * blockSize + minXY + halfBlockSize, j * blockSize + halfBlockSize + minYX, i * blockSize + halfBlockSize + minXY, (j + 1)*blockSize+halfBlockSize + minYX]], color)
-                if solutionMatrix[j][i+1] == 3:
-                    drawLine(originalImage, [[i * blockSize + minXY + halfBlockSize, j * blockSize + halfBlockSize + minYX,(i + 1) * blockSize + halfBlockSize + minXY, j * blockSize+halfBlockSize + minYX]], color)
-    imageShowWithWait("solution", originalImage, 21000)
+            if solutionMatrix[j][i] >= 2:
+                if solutionMatrix[j + 1][i] >= 2:
+                    drawLine(originalImage, [
+                        [i * blockSize + minXY + halfBlockSize, j * blockSize + halfBlockSize + minYX,
+                         i * blockSize + halfBlockSize + minXY, (j + 1) * blockSize + halfBlockSize + minYX]], color)
+                if solutionMatrix[j][i + 1] >= 2:
+                    drawLine(originalImage, [
+                        [i * blockSize + minXY + halfBlockSize, j * blockSize + halfBlockSize + minYX,
+                         (i + 1) * blockSize + halfBlockSize + minXY, j * blockSize + halfBlockSize + minYX]], color)
+    imageShowWithWait("solution", originalImage, 100)
+    sleep(100)
+
+
+def simplifySolution(solutionMatrix):
+    for i in range(1, len(solutionMatrix[0]) - 1):
+        for j in range(1, len(solutionMatrix) - 1):
+            if solutionMatrix[j + 1][i] == 3 and solutionMatrix[j][i + 1] == 3 and solutionMatrix[j + 1][i + 1] == 3 and \
+                    solutionMatrix[j][i] == 3:
+                iAux = i + 1
+                jAux = j + 1
+                stillSquare = True
+                while (stillSquare):
+                    iAux += 1
+                    for a in range(j, jAux + 1):
+                        if stillSquare:
+                            stillSquare = solutionMatrix[a][iAux] == 3
+
+                stillSquare = True
+                while (stillSquare):
+                    jAux += 1
+                    for a in range(i, iAux):
+                        if stillSquare:
+                            stillSquare = solutionMatrix[jAux][a] == 3
+                # for y in range(j, jAux ):
+                #     for x in range(i, iAux ):
+                #         solutionMatrix[y][x] = 4
+                reduceRedudantPart(i, iAux, j, jAux, solutionMatrix)
+    # for i in range(1, len(solutionMatrix[0]) - 1):
+    #     for j in range(1, len(solutionMatrix) - 1):
+    #         if solutionMatrix[j][i] == 3:
+                # iAux = i + 1
+                # while(solutionMatrix [j][iAux] == 3):
+                #     iAux += 1
+                # # reduceRedudantPart(i, iAux, j, j +1, solutionMatrix)
+                #
+                # jAux = j + 1
+                # while(solutionMatrix [jAux][i] == 3):
+                #     jAux += 1
+                # reduceRedudantPart(i, i+1, j, jAux, solutionMatrix)
+
+    return solutionMatrix
+
+
+def reduceRedudantPart(i, iAux, j, jAux, solutionMatrix):
+    HAS_SOLUTION_TOP_LEFT = solutionMatrix[j - 1][i] == 3 or solutionMatrix[j][i - 1] == 3
+    HAS_SOLUTION_TOP_RIGHT = solutionMatrix[j - 1][iAux - 1] == 3 or solutionMatrix[j][iAux] == 3
+    HAS_SOLUTION_BOTTOM_LEFT = solutionMatrix[jAux][i] == 3 or solutionMatrix[jAux - 1][i - 1] == 3
+    HAS_SOLUTION_BOTTOM_RIGHT = solutionMatrix[jAux][iAux - 1] == 3 or solutionMatrix[jAux - 1][iAux] == 3
+    totalTrue = 0
+    if HAS_SOLUTION_TOP_LEFT:
+        totalTrue += 1
+    if HAS_SOLUTION_TOP_RIGHT:
+        totalTrue += 1
+    if HAS_SOLUTION_BOTTOM_LEFT:
+        totalTrue += 1
+    if HAS_SOLUTION_BOTTOM_RIGHT:
+        totalTrue += 1
+    if totalTrue == 2:
+        if HAS_SOLUTION_BOTTOM_LEFT and HAS_SOLUTION_BOTTOM_RIGHT:
+            for y in range(j, jAux - 1):
+                for x in range(i, iAux):
+                    solutionMatrix[y][x] = 0
+        elif HAS_SOLUTION_TOP_LEFT and HAS_SOLUTION_TOP_RIGHT:
+            for y in range(j + 1, jAux):
+                for x in range(i, iAux):
+                    solutionMatrix[y][x] = 0
+        elif HAS_SOLUTION_TOP_RIGHT and HAS_SOLUTION_BOTTOM_RIGHT:
+            for y in range(j, jAux):
+                for x in range(i, iAux - 1):
+                    solutionMatrix[y][x] = 0
+        elif HAS_SOLUTION_TOP_LEFT and HAS_SOLUTION_BOTTOM_LEFT:
+            for y in range(j, jAux):
+                for x in range(i + 1, iAux):
+                    solutionMatrix[y][x] = 0
+        elif HAS_SOLUTION_BOTTOM_LEFT and HAS_SOLUTION_TOP_RIGHT:
+            for y in range(j, jAux - 1):
+                for x in range(i, iAux - 1):
+                    solutionMatrix[y][x] = 0
+        elif HAS_SOLUTION_BOTTOM_RIGHT and HAS_SOLUTION_TOP_LEFT:
+            for y in range(j + 1, jAux):
+                for x in range(i, iAux - 1):
+                    solutionMatrix[y][x] = 0
 
 
 if __name__ == '__main__':
