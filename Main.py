@@ -35,8 +35,10 @@ def main():
     linesX, linesY = getMazeWalls(edgeImage)
     drawLinesOnImage(originalImage, linesX, PINK)
     drawLinesOnImage(originalImage, linesY, PINK)
-    mazeMatrix = getMazeMatrix(linesX, linesY, initial, finish);
+    mazeMatrix, start, end = getMazeMatrix(linesX, linesY, initial, finish);
     #imageShowWithWait("lineImage", originalImage, 1005555)
+
+    solveMaze(mazeMatrix, start, end)
 
 
 
@@ -303,27 +305,9 @@ def getMazeMatrix(linesX, linesY, initial, finish):
             maze[i][j] = 1
     maze[int(round((initial[1] - minYX)/blockSize))][int(round((initial[0] - minXY)/blockSize))] = 2
     maze[int(round((finish[1] - minYX)/blockSize))][int(round((finish[0] - minXY)/blockSize))] = 2
+
     # print(maze)
-    x = 0
-
-    maxY = len(maze[0]) - 1
-    maxX = len(maze) - 1
-    for i in range(0, maxX):
-        for j in range(0, maxY):
-            if maze[i][j] == 0:
-                print("  ", end='')
-            elif maze[i][j] == 1:
-                print("++", end='')
-            elif maze[i][j] == 2:
-                print("()", end='')
-
-
-        print(" ", x)
-        x +=1
-    print(linesY)
-    print(linesX)
-    print(minDif)
-
+    return maze, [int(round((initial[1] - minYX)/blockSize)),int(round((initial[0] - minXY)/blockSize))], [int(round((finish[1] - minYX)/blockSize)),int(round((finish[0] - minXY)/blockSize))]
 
 def padronizeXverticalLines(linesY):
     linesY.sort(key=lambda x: x[0][0], reverse=False)
@@ -365,6 +349,60 @@ def drawLine(image, line, color, lineWidth = 5):
     x1, y1, x2, y2 = line[0]
     cv2.line(image, (x1, y1), (x2, y2), color, lineWidth)
 
+def solveMaze(maze, start, end):
+    sol = np.zeros((len(maze), len(maze[0])))
+    sol[end[0]][end[1]] = 2
+    hist = [end]
+    print(maze)
+    print(start)
+    print(end)
+    hasSolution, hist = solveMazeUtil(maze, end[1], end[0], sol, start[1], start[0], hist)
+    print(sol)
+    if hasSolution == False:
+        print("Solution doesn't exist")
+        print(hist)
+        return False
+    return True
+
+
+def solveMazeUtil(maze, x, y, sol, finalX, finalY, hist):
+    maxY = len(maze[0]) - 1
+    maxX = len(maze) - 1
+
+    if x == finalX and y == finalY:
+        sol[y][x] = 2
+        print(hist)
+        return True, hist
+
+    if isSafe(maze, x, y, maxY, maxX, sol):
+        sol[y][x] = 3
+
+        hasSolution, hist = solveMazeUtil(maze, x, y-1, sol, finalX, finalY, hist)
+        if hasSolution:
+            newHist = hist.append([x, y-1])
+            return True, newHist
+        hasSolution, hist = solveMazeUtil(maze, x, y+1, sol, finalX, finalY, hist)
+        if hasSolution:
+            newHist = hist.append([x, y+1])
+            return True, newHist
+
+        hasSolution, hist = solveMazeUtil(maze, x + 1, y, sol, finalX, finalY, hist)
+        if hasSolution:
+            newHist = hist.append([x+1, y])
+            return True, newHist
+        hasSolution, hist = solveMazeUtil(maze, x - 1, y, sol, finalX, finalY, hist)
+        if hasSolution:
+            newHist = hist.append([x-1, y])
+            return True, newHist
+
+        sol[x][y] = 0
+    return False, hist
+
+
+def isSafe(maze, x, y, maxY, maxX, sol):
+    if 0 < x < maxX and 0 < y < maxY and (maze[y][x] == 0 or maze[y][x] == 2) and (sol[y][x] == 0 or sol[y][x] == 2):
+        return True
+    return False
 
 if __name__ == '__main__':
     main()
