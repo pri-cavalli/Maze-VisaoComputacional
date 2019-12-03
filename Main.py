@@ -10,13 +10,14 @@ BLUE = (255, 0, 0)
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 CYAN = (255, 255, 0)
-# IMAGE_NAME = 'medium.jpg'
 IMAGE_NAME = 'medium.jpg'
 SHOW_LINES_AS_GROUPING = False
-# SHOW_LINES_AS_GROUPING = True
 roundNumber = 1
 roundNumber2 = 20
 minDif = 1000000
+
+globalMin = 0
+globalMinY = 0
 
 def main():
     originalImage = cv2.imread(IMAGE_NAME)
@@ -33,12 +34,14 @@ def main():
     #imageShowWithWait("edgeImageWithoutCircles", edgeImage)
 
     linesX, linesY = getMazeWalls(edgeImage)
-    drawLinesOnImage(originalImage, linesX, PINK)
-    drawLinesOnImage(originalImage, linesY, PINK)
-    mazeMatrix, start, end = getMazeMatrix(linesX, linesY, initial, finish);
+    drawLinesOnImage(originalImage, linesX, BLACK)
+    drawLinesOnImage(originalImage, linesY, BLACK)
     #imageShowWithWait("lineImage", originalImage, 1005555)
 
-    solveMaze(mazeMatrix, start, end)
+    mazeMatrix, start, end, blockSize, minXY, minYX = getMazeMatrix(linesX, linesY, initial, finish)
+    print(mazeMatrix)
+    solutionMatrix = solveMaze(mazeMatrix, start, end)
+    drawSolution(originalImage, solutionMatrix, blockSize, minXY, minYX, PINK)
 
 
 
@@ -285,7 +288,6 @@ def getMazeMatrix(linesX, linesY, initial, finish):
     tamY = math.ceil((maxY - minY) / blockSize) + 1
     maze = np.zeros((tamY, tamX))
 
-
     for line in linesX:
         x1, y, x2, _ = line[0]
         i = int(round((y - minYX) / blockSize))
@@ -306,8 +308,13 @@ def getMazeMatrix(linesX, linesY, initial, finish):
     maze[int(round((initial[1] - minYX)/blockSize))][int(round((initial[0] - minXY)/blockSize))] = 2
     maze[int(round((finish[1] - minYX)/blockSize))][int(round((finish[0] - minXY)/blockSize))] = 2
 
-    # print(maze)
-    return maze, [int(round((initial[1] - minYX)/blockSize)),int(round((initial[0] - minXY)/blockSize))], [int(round((finish[1] - minYX)/blockSize)),int(round((finish[0] - minXY)/blockSize))]
+    return \
+        maze,\
+        [int(round((initial[1] - minYX)/blockSize)),int(round((initial[0] - minXY)/blockSize))],\
+        [int(round((finish[1] - minYX)/blockSize)),int(round((finish[0] - minXY)/blockSize))],\
+        blockSize,\
+        minXY,\
+        minYX
 
 def padronizeXverticalLines(linesY):
     linesY.sort(key=lambda x: x[0][0], reverse=False)
@@ -342,7 +349,7 @@ def padronizeHeightOfHorizontalLines(linesX):
 
 def drawLinesOnImage(image, lines, color):
     for line in lines:
-        drawLine(image, line, color, 2)
+        drawLine(image, line, color, 4)
 
 
 def drawLine(image, line, color, lineWidth = 5):
@@ -351,58 +358,52 @@ def drawLine(image, line, color, lineWidth = 5):
 
 def solveMaze(maze, start, end):
     sol = np.zeros((len(maze), len(maze[0])))
-    sol[end[0]][end[1]] = 2
-    hist = [end]
-    print(maze)
-    print(start)
-    print(end)
-    hasSolution, hist = solveMazeUtil(maze, end[1], end[0], sol, start[1], start[0], hist)
-    print(sol)
+    hasSolution = solveMazeUtil(maze, start[1], start[0], sol, end[1], end[0])
     if hasSolution == False:
         print("Solution doesn't exist")
-        print(hist)
-        return False
-    return True
+        quit(-1)
+    return sol
 
 
-def solveMazeUtil(maze, x, y, sol, finalX, finalY, hist):
-    maxY = len(maze[0]) - 1
-    maxX = len(maze) - 1
-
+def solveMazeUtil(maze, x, y, sol, finalX, finalY):
     if x == finalX and y == finalY:
-        sol[y][x] = 2
-        print(hist)
-        return True, hist
-
-    if isSafe(maze, x, y, maxY, maxX, sol):
         sol[y][x] = 3
+        return True
+    if maze[y][x] == 1:
+        return False
+    if sol[y][x] == 3:
+        return False
+    sol[y][x] = 3
 
-        hasSolution, hist = solveMazeUtil(maze, x, y-1, sol, finalX, finalY, hist)
-        if hasSolution:
-            newHist = hist.append([x, y-1])
-            return True, newHist
-        hasSolution, hist = solveMazeUtil(maze, x, y+1, sol, finalX, finalY, hist)
-        if hasSolution:
-            newHist = hist.append([x, y+1])
-            return True, newHist
+    hasSolution1 = solveMazeUtil(maze, x, y-1, sol, finalX, finalY)
+    if hasSolution1:
+        return True
+    hasSolution2 = solveMazeUtil(maze, x, y+1, sol, finalX, finalY)
+    if hasSolution2:
+        return True
 
-        hasSolution, hist = solveMazeUtil(maze, x + 1, y, sol, finalX, finalY, hist)
-        if hasSolution:
-            newHist = hist.append([x+1, y])
-            return True, newHist
-        hasSolution, hist = solveMazeUtil(maze, x - 1, y, sol, finalX, finalY, hist)
-        if hasSolution:
-            newHist = hist.append([x-1, y])
-            return True, newHist
-
-        sol[x][y] = 0
-    return False, hist
-
-
-def isSafe(maze, x, y, maxY, maxX, sol):
-    if 0 < x < maxX and 0 < y < maxY and (maze[y][x] == 0 or maze[y][x] == 2) and (sol[y][x] == 0 or sol[y][x] == 2):
+    hasSolution3 = solveMazeUtil(maze, x+1, y, sol, finalX, finalY)
+    if hasSolution3:
+        return True
+    hasSolution4 = solveMazeUtil(maze, x-1, y, sol, finalX, finalY)
+    if hasSolution4:
         return True
     return False
+
+def drawSolution(originalImage, solutionMatrix, blockSize, minXY, minYX,  color):
+    print(solutionMatrix)
+    maxX = len(solutionMatrix[0]) - 1
+    maxY = len(solutionMatrix) - 1
+    halfBlockSize = int(blockSize/2)
+    for i in range(0, maxX):
+        for j in range(0, maxY):
+            if solutionMatrix[j][i] == 3:
+                if solutionMatrix[j+1][i] == 3:
+                    drawLine(originalImage, [[(i+minYX) * blockSize + halfBlockSize, (j+minYX) * blockSize + halfBlockSize, (i+minYX) * blockSize + halfBlockSize , ((j+minYX) + 1)*blockSize+halfBlockSize]], color)
+                if solutionMatrix[j][i+1] == 3:
+                    drawLine(originalImage, [[(i+minYX) * blockSize + halfBlockSize, (j+minYX) * blockSize + halfBlockSize,((i+minYX) + 1) * blockSize + halfBlockSize, (j+minYX)*blockSize+halfBlockSize]], color)
+    imageShowWithWait("solution", originalImage, 21000)
+
 
 if __name__ == '__main__':
     main()
