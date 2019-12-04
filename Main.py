@@ -1,3 +1,4 @@
+import heapq
 import math
 from time import sleep
 import cv2
@@ -10,6 +11,7 @@ BLUE = (255, 0, 0)
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 CYAN = (255, 255, 0)
+# IMAGE_NAME = 'easy.jpg'
 IMAGE_NAME = 'hard.png'
 SHOW_LINES_AS_GROUPING = False
 roundNumber = 1
@@ -44,6 +46,144 @@ def main():
     solutionMatrix = solveMaze(mazeMatrix, start, end)
     drawSolution(originalImage, solutionMatrix, blockSize, minXY, minYX, PINK)
 
+class Cell(object):
+    def __init__(self, x, y, reachable):
+        """
+        Initialize new cell
+
+        @param x cell x coordinate
+        @param y cell y coordinate
+        @param reachable is cell reachable? not a wall?
+        """
+        self.reachable = reachable
+        self.x = x
+        self.y = y
+        self.parent = None
+        self.g = 0
+        self.h = 0
+        self.f = 0
+
+    def __lt__(self, other):
+        return self.f < other.f
+
+    def __gt__(self, other):
+        return self.f > other.f
+
+
+class AStar(object):
+    def __init__(self):
+        self.opened = []
+        heapq.heapify(self.opened)
+        self.closed = set()
+        self.cells = []
+        self.grid_height = 6
+        self.grid_width = 6
+        self.start = None
+        self.end = None
+
+    def init_grid(self, grid):
+
+        self.grid_height = len(grid)
+        self.grid_width = len(grid[0])
+        for x in range(self.grid_width):
+            for y in range(self.grid_height):
+                if grid[y][x] == 1:
+                    reachable = False
+                else:
+                    reachable = True
+                self.cells.append(Cell(x, y, reachable))
+                if grid[y][x] == 2:
+                    if self.start == None:
+                        self.start = self.get_cell(x, y)
+                    else:
+                        self.end = self.get_cell(x, y)
+
+    def get_heuristic(self, cell):
+        """
+        Compute the heuristic value H for a cell: distance between
+        this cell and the ending cell multiply by 10.
+
+        @param cell
+        @returns heuristic value H
+        """
+        return 10 * (abs(cell.x - self.end.x) + abs(cell.y - self.end.y))
+
+    def get_cell(self, x, y):
+        """
+        Returns a cell from the cells list
+
+        @param x cell x coordinate
+        @param y cell y coordinate
+        @returns cell
+        """
+        return self.cells[x * self.grid_height + y]
+
+    def get_adjacent_cells(self, cell):
+        """
+        Returns adjacent cells to a cell. Clockwise starting
+        from the one on the right.
+
+        @param cell get adjacent cells for this cell
+        @returns adjacent cells list
+        """
+        cells = []
+        if cell.x < self.grid_width - 1:
+            cells.append(self.get_cell(cell.x + 1, cell.y))
+        if cell.y > 0:
+            cells.append(self.get_cell(cell.x, cell.y - 1))
+        if cell.x > 0:
+            cells.append(self.get_cell(cell.x - 1, cell.y))
+        if cell.y < self.grid_height - 1:
+            cells.append(self.get_cell(cell.x, cell.y + 1))
+        return cells
+
+    def display_path(self):
+        cell = self.end
+        solution = []
+        while cell.parent is not self.start:
+            cell = cell.parent
+            solution.append((cell.x, cell.y))
+            print( 'path: cell: %d,%d' % (cell.x, cell.y))
+        return solution
+
+    def update_cell(self, adj, cell):
+        """
+        Update adjacent cell
+
+        @param adj adjacent cell to current cell
+        @param cell current cell being processed
+        """
+        adj.g = cell.g + 10
+        adj.h = self.get_heuristic(adj)
+        adj.parent = cell
+        adj.f = adj.h + adj.g
+
+    def process(self):
+        # add starting cell to open heap queue
+        heapq.heappush(self.opened, (self.start.f, self.start))
+        while len(self.opened):
+            # pop cell from heap queue
+            f, cell = heapq.heappop(self.opened)
+            # add cell to closed list so we don't process it twice
+            self.closed.add(cell)
+            # if ending cell, display found path
+            if cell is self.end:
+                self.display_path()
+                break
+            # get adjacent cells for cell
+            adj_cells = self.get_adjacent_cells(cell)
+            for adj_cell in adj_cells:
+                if adj_cell.reachable and adj_cell not in self.closed:
+                    if (adj_cell.f, adj_cell) in self.opened:
+                        # if adj cell in open list, check if current path is
+                        # better than the one previously found for this adj
+                        # cell.
+                        if adj_cell.g > cell.g + 10:
+                            self.update_cell(adj_cell, cell)
+                    else:
+                        self.update_cell(adj_cell, cell)
+                        # add adj cell to open list
+                        heapq.heappush(self.opened, (adj_cell.f, adj_cell))
 
 def getGrayImage(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -360,13 +500,17 @@ def drawLine(image, line, color, lineWidth=5):
 
 
 def solveMaze(maze, start, end):
-    sol = np.zeros((len(maze), len(maze[0])))
-    sol[start[1]][start[0]] = 2
-    hasSolution = solveMazeUtil(maze, start[1], start[0], sol, end[1], end[0])
-    if hasSolution == False:
-        print("Solution doesn't exist")
-        quit(-1)
-    return sol
+    # sol = np.zeros((len(maze), len(maze[0])))
+    # sol[start[1]][start[0]] = 2
+    # hasSolution = solveMazeUtil(maze, start[1], start[0], sol, end[1], end[0])
+    # if hasSolution == False:
+    #     print("Solution doesn't exist")
+    #     quit(-1)
+    # return sol
+    aStar = AStar()
+    aStar.init_grid(maze)
+    aStar.process()
+    return aStar.display_path()
 
 
 def solveMazeUtil(maze, x, y, sol, finalX, finalY):
@@ -399,24 +543,40 @@ def solveMazeUtil(maze, x, y, sol, finalX, finalY):
     return False
 
 
-def drawSolution(originalImage, solutionMatrix, blockSize, minXY, minYX, color):
+def drawSolution(originalImage, solution, blockSize, minXY, minYX, color):
     # simplifySolution(solutionMatrix)
-    print(solutionMatrix)
+    # print(solutionMatrix)
     # print(simplifySolution(solutionMatrix))
-    maxX = len(solutionMatrix[0]) - 1
-    maxY = len(solutionMatrix) - 1
+    maxX = len(originalImage[0]) - 1
+    maxY = len(originalImage) - 1
     halfBlockSize = int(blockSize / 2) * 0
-    for i in range(0, maxX):
-        for j in range(0, maxY):
-            if solutionMatrix[j][i] >= 2:
-                if solutionMatrix[j + 1][i] >= 2:
-                    drawLine(originalImage, [
-                        [i * blockSize + minXY + halfBlockSize, j * blockSize + halfBlockSize + minYX,
-                         i * blockSize + halfBlockSize + minXY, (j + 1) * blockSize + halfBlockSize + minYX]], color)
-                if solutionMatrix[j][i + 1] >= 2:
-                    drawLine(originalImage, [
-                        [i * blockSize + minXY + halfBlockSize, j * blockSize + halfBlockSize + minYX,
-                         (i + 1) * blockSize + halfBlockSize + minXY, j * blockSize + halfBlockSize + minYX]], color)
+    for i in range(1, len(solution)):
+        before = solution[i - 1]
+        current = solution[i]
+        x = current[0]
+        y = current[1]
+        xBefore = before[0]
+        yBefore = before[1]
+        if not before[0] == current[0]:
+            drawLine(originalImage, [
+                                    [x * blockSize + minXY + halfBlockSize, y * blockSize + halfBlockSize + minYX,
+                                     xBefore * blockSize + halfBlockSize + minXY, yBefore * blockSize + halfBlockSize + minYX]], color)
+        else:
+            drawLine(originalImage, [
+                [x * blockSize + minXY + halfBlockSize, y * blockSize + halfBlockSize + minYX,
+                 xBefore * blockSize + halfBlockSize + minXY, yBefore * blockSize + halfBlockSize + minYX]], color)
+
+    # for i in range(0, maxX):
+    #     for j in range(0, maxY):
+    #         if solutionMatrix[j][i] >= 2:
+    #             if solutionMatrix[j + 1][i] >= 2:
+    #                 drawLine(originalImage, [
+    #                     [i * blockSize + minXY + halfBlockSize, j * blockSize + halfBlockSize + minYX,
+    #                      i * blockSize + halfBlockSize + minXY, (j + 1) * blockSize + halfBlockSize + minYX]], color)
+    #             if solutionMatrix[j][i + 1] >= 2:
+    #                 drawLine(originalImage, [
+    #                     [i * blockSize + minXY + halfBlockSize, j * blockSize + halfBlockSize + minYX,
+    #                      (i + 1) * blockSize + halfBlockSize + minXY, j * blockSize + halfBlockSize + minYX]], color)
     imageShowWithWait("solution", originalImage, 100)
     sleep(100)
 
@@ -508,3 +668,5 @@ def reduceRedudantPart(i, iAux, j, jAux, solutionMatrix):
 
 if __name__ == '__main__':
     main()
+
+
