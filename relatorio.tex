@@ -1,21 +1,123 @@
-\documentclass{article}
-
-\usepackage[utf8]{inputenc}
-\usepackage{url}
-\usepackage{amsmath}
-\def\UrlFont{\em}
-\usepackage{indentfirst}
-
-\title{Trabalho de Visão Relatório}
-\author{Felipe Leivas Machado - 262528 \and Priscila Cavalli Rachevsky - 261573 }
-
-\usepackage{natbib}
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+% The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage[]{algorithm2e}
 \usepackage{graphicx}
-\usepackage{capt-of}
-
+\usepackage{textcomp}
+\usepackage{xcolor}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 \begin{document}
+
+\title{Maze Solver
+% {\footnotesize \textsuperscript{*}Note: Sub-titles are not captured in Xplore and
+% should not be used}
+% \thanks{Identify applicable funding agency here. If none, delete this.}
+}
+
+\author{\IEEEauthorblockN{Felipe Leivas Machado}
+\IEEEauthorblockA{\textit{262528} \\
+\and
+\IEEEauthorblockN{Priscila Cavalli Rachevsky}
+\IEEEauthorblockA{261573} \\
+}}
 
 \maketitle
 
 \section{Introdução}
+Neste artigo será apresentado um algoritmo para ler um labirinto feito a mão ou digital.
+
+\section{Definição do problema}
+
+\subsection{Descrição do problema}
+O problema escolhido foi realizar um algoritmo que recebesse de entrada a foto, ou imagem de um labirinto, a processasse gerasse como saída a imagem do labirinto com a solução dele desenhada.
+\subsection {Definição do labirinto}
+O labirinto deve conter dois círculos, indicando o ponto inicial e final do labirinto. Para melhores resultados também se aconselha a fazer o labirinto retangular com as suas paredes paralelas as bordas da imagem.
+
+
+\section{Solução do problema}
+Para resolver o labirinto, foi usado o seguinte pseudocódigo
+\begin{algorithm}[H]
+Suavização do ruido\;
+Binarização da imagem\;
+Identificação dos pontos iniciais e finais\;
+Remoção dos pontos iniciais e finais da imagem\;
+Identificação das paredes\;
+Unificação de paredes próximas\;
+Redução do labirinto para uma matriz\;
+Resolução do labirinto\;
+Desenhar a solução no labirinto\;
+\end{algorithm}
+\subsection{Suavização do ruído}
+ Para suavizar o ruido foi usado um filtro gaussiano com um kernel pequeno para as paredes não serem muito suavizadas com o fundo da imagem e dificultar o processo de binarização.
+ \subsection{Binarização}
+ Como a imagem de entrada é praticamente uma imagem linear, fundo branco e as paredes do labirinto são escuras, um algoritmo de binarização foi utilizado, o threshold para a binarização foi um valor fixo, gerado após várias tentativas.
+
+\subsection{Identificação dos pontos iniciais e finais}
+Para isso foi usado uma modificação no algoritmo de Hough para detectar círculos. Limitamos o tamanho do raio do círculo, para acelerarmos a busca, e também pois os círculos não podem ser muito grandes pois eles precisam ser menor que o largura do caminho do labirinto. Detectando os dois círculos se assume que o maior é o ponto final e o menor o ponto inicial.
+
+\subsection{Remoção dos pontos iniciais e finais da imagem}
+Para que os pontos iniciais não atrapalhassem a busca pelas paredes do labirinto, eles foram removidas, mas como os círculos desenhados não são perfeitos, pois podem ser feitos a mão, foi removido um pouco a mais do que o circulo original. O raio do circulo removido é uma porcentagem da imagem.
+\subsection{Identificação das paredes}
+Para identificar as paredes, também foi usado Hough, mas como as paredes são perpendiculares e paralelas entre si, foi usado um espaço de busca divido em 90º graus. Com a equação gerada por Hough e com base na imagem, se detectou os pontos iniciais e finais de cada linha gerada por Hough.
+\subsection{Unificação de paredes próximas}
+O algoritmo de Hough nem sempre retorna uma linha como sendo só uma linha, as vezes o retorno é um conjunto de linhas para representar-la, principalmente as paredes maiores, como as externas, sendo assim, era preciso unifica-las.
+
+Então para unifica-las primeiramente se separou as linhas nas paredes horizontais e verticais. Depois se pegava uma linha e via, no caso de uma linha horizontal, dentre as outras linhas horizontais as que tinham o \(y\) parecido com a linhas original e que tinha o valor de \(x\) uma de suas extremidades dentro, ou muito perto, dos valores de \(x\) da linha original. Então se atualizava o valor das extremidades com a nova linha e seguia até acabar as linhas.
+
+Se uma linha tivesse no mesmo \(y\) da original mas não no intervalo de \(x\) se adicionava num conjunto de que ainda seria possível "alcançar" ela caso outras linhas fossem adicionadas a essa linha estendendo seu comprimento. E sempre que as extremidades mudavam, esse conjunto de linhas possíveis era adicionado no conjunto de linhas. O mesmo se aplica para as linhas verticais, só mudando os eixos.
+
+\subsection{Redução do labirinto para uma matriz}
+Agora com várias linhas representando paredes, tentou-se deixar as linhas que fossem na mesma orientação e tivessem o \(x\) ou \(y\) parecidos, com o mesmo valor, isso para quando acontecesse a redução para o labirinto, eles ficarem na mesma linha ou coluna da matriz, e não haver falsos buracos.
+
+Depois que as linhas próximas foram padronizadas, se viu a menor distância entre linhas horizontais ou verticais, e isso se definiu o tamanho do bloco. Então a imagem foi discretizadas em blocos de \(tamanho\_do\_bloco X tamanho\_do\_bloco\). Se um bloco tivesse uma parede, aquele bloco inteiro virava uma parede, se naquele bloco tivesse o centro de um dos pontos de inicio ou fim, aquele bloco virava o bloco de começo ou fim. Senão era um bloco livre, onde o caminho da solução poderia passar
+\subsection{Resolução do labirinto}
+Com uma matriz representando o labirinto, foi usado o algoritmo A* para resolver o caminho do inicio ao final do labirinto.
+\subsection{Desenhar a solução no labirinto}
+Como o caminho gerado pelo passo anterior é um caminho onde só se pode andar para nas 4 direções, basta desenhar uma reta do ponto médio de cada ponto até o ponto médio do próximo ponto na solução.
+
+\section*{Acknowledgment}
+
+The preferred spelling of the word ``acknowledgment'' in America is without
+an ``e'' after the ``g''. Avoid the stilted expression ``one of us (R. B.
+G.) thanks $\ldots$''. Instead, try ``R. B. G. thanks$\ldots$''. Put sponsor
+acknowledgments in the unnumbered footnote on the first page.
+
+\section*{References}
+
+Please number citations consecutively within brackets \cite{b1}. The
+sentence punctuation follows the bracket \cite{b2}. Refer simply to the reference
+number, as in \cite{b3}---do not use ``Ref. \cite{b3}'' or ``reference \cite{b3}'' except at
+the beginning of a sentence: ``Reference \cite{b3} was the first $\ldots$''
+
+Number footnotes separately in superscripts. Place the actual footnote at
+the bottom of the column in which it was cited. Do not put footnotes in the
+abstract or reference list. Use letters for table footnotes.
+
+Unless there are six authors or more give all authors' names; do not use
+``et al.''. Papers that have not been published, even if they have been
+submitted for publication, should be cited as ``unpublished'' \cite{b4}. Papers
+that have been accepted for publication should be cited as ``in press'' \cite{b5}.
+Capitalize only the first word in a paper title, except for proper nouns and
+element symbols.
+
+For papers published in translation journals, please give the English
+citation first, followed by the original foreign-language citation \cite{b6}.
+
+\begin{thebibliography}{00}
+\bibitem{b1} G. Eason, B. Noble, and I. N. Sneddon, ``On certain integrals of Lipschitz-Hankel type involving products of Bessel functions,'' Phil. Trans. Roy. Soc. London, vol. A247, pp. 529--551, April 1955.
+\bibitem{b2} J. Clerk Maxwell, A Treatise on Electricity and Magnetism, 3rd ed., vol. 2. Oxford: Clarendon, 1892, pp.68--73.
+\bibitem{b3} I. S. Jacobs and C. P. Bean, ``Fine particles, thin films and exchange anisotropy,'' in Magnetism, vol. III, G. T. Rado and H. Suhl, Eds. New York: Academic, 1963, pp. 271--350.
+\bibitem{b4} K. Elissa, ``Title of paper if known,'' unpublished.
+\bibitem{b5} R. Nicole, ``Title of paper with only first word capitalized,'' J. Name Stand. Abbrev., in press.
+\bibitem{b6} Y. Yorozu, M. Hirano, K. Oka, and Y. Tagawa, ``Electron spectroscopy studies on magneto-optical media and plastic substrate interface,'' IEEE Transl. J. Magn. Japan, vol. 2, pp. 740--741, August 1987 [Digests 9th Annual Conf. Magnetics Japan, p. 301, 1982].
+\bibitem{b7} M. Young, The Technical Writer's Handbook. Mill Valley, CA: University Science, 1989.
+\end{thebibliography}
+\vspace{12pt}
+\color{red}
+IEEE conference templates contain guidance text for composing and formatting conference papers. Please ensure that all template text is removed from your conference paper prior to submission to the conference. Failure to remove the template text from your paper may result in your paper not being published.
+
 \end{document}
