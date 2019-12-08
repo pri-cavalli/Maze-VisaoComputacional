@@ -3,6 +3,7 @@ import math
 from time import sleep
 import cv2
 import numpy as np
+import os
 
 RED = (0, 0, 255)
 GREEN = (0, 255, 0)
@@ -11,8 +12,11 @@ BLUE = (255, 0, 0)
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 CYAN = (255, 255, 0)
+# IMAGE_NAME = 'lab1.jpg'
 IMAGE_NAME = 'medium.jpg'
+# IMAGE_NAME = 'easy.jpg'
 # IMAGE_NAME = 'hard.png'
+IMAGE_NAME = 'lab3.png'
 SHOW_LINES_AS_GROUPING = False
 roundNumber = 1
 roundNumber2 = 20
@@ -23,28 +27,34 @@ globalMinY = 0
 
 
 def main():
+    global roundNumber2
     originalImage = cv2.imread(IMAGE_NAME)
     grayImage = getGrayImage(originalImage)
-    # imageShowWithWait("grayImage", grayImage)
+    imageShowWithWait("grayImage", grayImage)
 
     edgeImage = getEdgeImage(grayImage)
-    # imageShowWithWait("edgeImage", edgeImage)
-
+    imageShowWithWait("edgeImage", edgeImage)
+    cv2.imwrite("edgeImage" + IMAGE_NAME, edgeImage)
     initial, finish = getInitialAndFinishArea(edgeImage)
     drawCircle(originalImage, initial, RED)
     drawCircle(originalImage, finish, GREEN)
     edgeImage = getEdgeImageWithoutCircles(edgeImage, initial, finish)
     # imageShowWithWait("edgeImageWithoutCircles", edgeImage)
+    cv2.imwrite("edgeImageWithoutCircles" + IMAGE_NAME, edgeImage)
 
     linesX, linesY = getMazeWalls(edgeImage)
     drawLinesOnImage(originalImage, linesX, CYAN)
     drawLinesOnImage(originalImage, linesY, CYAN)
-    # imageShowWithWait("lineImage", originalImage, 1005555)
+    imageShowWithWait("lineImage", originalImage, 10)
+    cv2.imwrite("lineImage" + IMAGE_NAME, originalImage)
 
     mazeMatrix, start, end, blockSize, minXY, minYX = getMazeMatrix(linesX, linesY, initial, finish, originalImage)
     print(mazeMatrix)
+    print(len(mazeMatrix), len(mazeMatrix[0]), roundNumber2)
     solutionMatrix = solveMaze(mazeMatrix, start, end)
+    originalImage = cv2.imread(IMAGE_NAME)
     drawSolution(originalImage, solutionMatrix, blockSize, minXY, minYX, PINK)
+    cv2.imwrite("solution" + IMAGE_NAME, originalImage)
 
 class Cell(object):
     def __init__(self, x, y, reachable):
@@ -198,8 +208,8 @@ def getEdgeImage(image):
 
 def getInitialAndFinishArea(image):
     minDimension = min(len(image), len(image[0]))
-    # circles = cv2.HoughCircles(image, cv2.HOUGH_GRADIENT, 1, 200, None, 30, 15, int(minDimension * 0.015), int(minDimension * 0.15))
-    circles = cv2.HoughCircles(image, cv2.HOUGH_GRADIENT, 1, 200, None, 30, 15, 5, 50)
+    circles = cv2.HoughCircles(image, cv2.HOUGH_GRADIENT, 1, 200, None, 30, 15, int(minDimension * 0.0015), int(minDimension * 0.1))
+    # circles = cv2.HoughCircles(image, cv2.HOUGH_GRADIENT, 1, 200, None, 30, 15, 1, 14)
     if len(circles) > 2:
         raise Exception("Achou mais de 2 cisúlos na imagem")
     if circles[0][0][2] > circles[0][1][2]:
@@ -233,7 +243,9 @@ def getMazeWalls(edgeImage):
     imageWidth = len(edgeImage[0])
     imageHeight = len(edgeImage)
     minDimension = min(imageHeight, imageWidth)
-    rho = 1  # distance resolution in pixels of the Hough grid
+    global roundNumber2
+    roundNumber2 = minDimension * 0.03
+    rho = roundNumber2/6  # distance resolution in pixels of the Hough grid
     theta = np.pi / 4  # angular resolution in radians of the Hough grid
     threshold = 20  # minimum number of votes (intersections in Hough grid cell)
     min_line_length = int(minDimension * .08)  # minimum number of pixels making up a line
@@ -438,7 +450,7 @@ def getMazeMatrix(linesX, linesY, initial, finish, image):
         x1, y, x2, _ = line[0]
         i = int(round((y) / blockSize))
         jMin = int(round((x2) / blockSize))
-        jMax = int(round((x1) / blockSize))
+        jMax = int(round(x1/blockSize))
         for j in range(jMin, jMax):
             maze[i][j] = 1
 
@@ -560,14 +572,14 @@ def drawSolution(originalImage, solution, blockSize, minXYa, minYXa, color):
         y = current[1]
         xBefore = before[0]
         yBefore = before[1]
-        if not before[0] == current[0]:
-            drawLine(originalImage, [
-                                    [x * blockSize + halfBlockSize, y * blockSize + halfBlockSize ,
-                                     xBefore * blockSize + halfBlockSize , yBefore * blockSize + halfBlockSize ]], color)
-        else:
-            drawLine(originalImage, [
-                [x * blockSize + halfBlockSize, y * blockSize + halfBlockSize,
-                 xBefore * blockSize + halfBlockSize, yBefore * blockSize + halfBlockSize]], color)
+        # if not before[0] == current[0]:
+        drawLine(originalImage, [
+                                [x * blockSize + halfBlockSize, y * blockSize + halfBlockSize ,
+                                 xBefore * blockSize + halfBlockSize , yBefore * blockSize + halfBlockSize ]], color)
+        # else:
+        #     drawLine(originalImage, [
+        #         [x * blockSize + halfBlockSize, y * blockSize + halfBlockSize,
+        #          xBefore * blockSize + halfBlockSize, yBefore * blockSize + halfBlockSize]], color)
 
     # for i in range(0, maxX):
     #     for j in range(0, maxY):
@@ -581,7 +593,7 @@ def drawSolution(originalImage, solution, blockSize, minXYa, minYXa, color):
     #                     [i * blockSize + minXY + halfBlockSize, j * blockSize + halfBlockSize + minYX,
     #                      (i + 1) * blockSize + halfBlockSize + minXY, j * blockSize + halfBlockSize + minYX]], color)
     imageShowWithWait("solution", originalImage, 100)
-    sleep(100)
+    # sleep(100)
 
 
 def simplifySolution(solutionMatrix):
