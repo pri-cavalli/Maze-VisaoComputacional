@@ -1,8 +1,11 @@
 import heapq
 import math
 from time import sleep
+
+import sys
 import cv2
 import numpy as np
+np.set_printoptions(threshold=sys.maxsize)
 import os
 
 RED = (0, 0, 255)
@@ -13,9 +16,9 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 CYAN = (255, 255, 0)
 # IMAGE_NAME = 'lab1.jpg'
-IMAGE_NAME = 'medium.jpg'
+#IMAGE_NAME = 'medium.jpg'
 # IMAGE_NAME = 'easy.jpg'
-# IMAGE_NAME = 'hard.png'
+#IMAGE_NAME = 'hard.png'
 IMAGE_NAME = 'lab3.png'
 SHOW_LINES_AS_GROUPING = False
 roundNumber = 1
@@ -34,23 +37,22 @@ def main():
 
     edgeImage = getEdgeImage(grayImage)
     imageShowWithWait("edgeImage", edgeImage)
-    cv2.imwrite("edgeImage" + IMAGE_NAME, edgeImage)
+    #cv2.imwrite("edgeImage" + IMAGE_NAME, edgeImage)
     initial, finish = getInitialAndFinishArea(edgeImage)
     drawCircle(originalImage, initial, RED)
     drawCircle(originalImage, finish, GREEN)
     edgeImage = getEdgeImageWithoutCircles(edgeImage, initial, finish)
-    # imageShowWithWait("edgeImageWithoutCircles", edgeImage)
-    cv2.imwrite("edgeImageWithoutCircles" + IMAGE_NAME, edgeImage)
+    #cv2.imwrite("edgeImageWithoutCircles" + IMAGE_NAME, originalImage)
 
     linesX, linesY = getMazeWalls(edgeImage)
     drawLinesOnImage(originalImage, linesX, CYAN)
     drawLinesOnImage(originalImage, linesY, CYAN)
     imageShowWithWait("lineImage", originalImage, 10)
-    cv2.imwrite("lineImage" + IMAGE_NAME, originalImage)
+    #cv2.imwrite("lineImage" + IMAGE_NAME, originalImage)
 
     mazeMatrix, start, end, blockSize, minXY, minYX = getMazeMatrix(linesX, linesY, initial, finish, originalImage)
     print(mazeMatrix)
-    print(len(mazeMatrix), len(mazeMatrix[0]), roundNumber2)
+    #print(len(mazeMatrix), len(mazeMatrix[0]), roundNumber2)
     solutionMatrix = solveMaze(mazeMatrix, start, end)
     originalImage = cv2.imread(IMAGE_NAME)
     drawSolution(originalImage, solutionMatrix, blockSize, minXY, minYX, PINK)
@@ -153,7 +155,7 @@ class AStar(object):
         while cell.parent is not self.start:
             cell = cell.parent
             solution.append((cell.x, cell.y))
-            print( 'path: cell: %d,%d' % (cell.x, cell.y))
+            # print( 'path: cell: %d,%d' % (cell.x, cell.y))
         return solution
 
     def update_cell(self, adj, cell):
