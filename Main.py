@@ -11,8 +11,8 @@ BLUE = (255, 0, 0)
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 CYAN = (255, 255, 0)
-# IMAGE_NAME = 'easy.jpg'
-IMAGE_NAME = 'hard.png'
+IMAGE_NAME = 'medium.jpg'
+# IMAGE_NAME = 'hard.png'
 SHOW_LINES_AS_GROUPING = False
 roundNumber = 1
 roundNumber2 = 20
@@ -41,7 +41,7 @@ def main():
     drawLinesOnImage(originalImage, linesY, CYAN)
     # imageShowWithWait("lineImage", originalImage, 1005555)
 
-    mazeMatrix, start, end, blockSize, minXY, minYX = getMazeMatrix(linesX, linesY, initial, finish)
+    mazeMatrix, start, end, blockSize, minXY, minYX = getMazeMatrix(linesX, linesY, initial, finish, originalImage)
     print(mazeMatrix)
     solutionMatrix = solveMaze(mazeMatrix, start, end)
     drawSolution(originalImage, solutionMatrix, blockSize, minXY, minYX, PINK)
@@ -197,6 +197,8 @@ def getEdgeImage(image):
 
 
 def getInitialAndFinishArea(image):
+    minDimension = min(len(image), len(image[0]))
+    # circles = cv2.HoughCircles(image, cv2.HOUGH_GRADIENT, 1, 200, None, 30, 15, int(minDimension * 0.015), int(minDimension * 0.15))
     circles = cv2.HoughCircles(image, cv2.HOUGH_GRADIENT, 1, 200, None, 30, 15, 5, 50)
     if len(circles) > 2:
         raise Exception("Achou mais de 2 cisúlos na imagem")
@@ -418,44 +420,45 @@ def getExtremesOfLines(lines):
     return maxX, maxY, minX, minY
 
 
-def getMazeMatrix(linesX, linesY, initial, finish):
+def getMazeMatrix(linesX, linesY, initial, finish, image):
+
     linesX.sort(key=lambda x: x[0][1], reverse=False)
     linesY.sort(key=lambda x: x[0][0], reverse=False)
 
-    maxX, maxYX, minX, minYX = getExtremesOfLines(linesX)
-    maxXY, maxY, minXY, minY = getExtremesOfLines(linesY)
-    maxX = max(maxX, maxXY)
-    maxY = max(maxY, maxYX)
+    # # maxX, maxYX, minX, minYX = getExtremesOfLines(linesX)
+    # # maxXY, maxY, minXY, minY = getExtremesOfLines(linesY)
+    # maxX = max(maxX, maxXY)
+    # maxY = max(maxY, maxYX)
     blockSize = int(minDif * 1)
-    tamX = math.ceil((maxX - minX) / blockSize) + 1
-    tamY = math.ceil((maxY - minY) / blockSize) + 1
+    tamX = math.ceil(len(image[0]) / blockSize) + 1
+    tamY = math.ceil(len(image) / blockSize) + 1
     maze = np.zeros((tamY, tamX))
 
     for line in linesX:
         x1, y, x2, _ = line[0]
-        i = int(round((y - minY) / blockSize))
-        jMin = int(round((x2 - minX) / blockSize))
-        jMax = int(round((x1 - minX) / blockSize))
+        i = int(round((y) / blockSize))
+        jMin = int(round((x2) / blockSize))
+        jMax = int(round((x1) / blockSize))
         for j in range(jMin, jMax):
             maze[i][j] = 1
 
     for line in linesY:
         x, y1, _, y2 = line[0]
-        j = int(round((x - minY) / blockSize))
-        iMin = int(round((y1 - minY) / blockSize))
-        iMax = int(round((y2 - minY) / blockSize))
+        j = int(round((x) / blockSize))
+        iMin = int(round((y1) / blockSize))
+        iMax = int(round((y2) / blockSize))
         for i in range(iMin, iMax):
             maze[i][j] = 1
-    maze[int(round((initial[1] - minY) / blockSize))][int(round((initial[0] - minX) / blockSize))] = 2
-    maze[int(round((finish[1] - minY) / blockSize))][int(round((finish[0] - minX) / blockSize))] = 2
+    maze[int(round((initial[1]) / blockSize))][int(round((initial[0]) / blockSize))] = 2
+    maze[int(round((finish[1]) / blockSize))][int(round((finish[0]) / blockSize))] = 2
 
     return \
         maze, \
-        [int(round((initial[1] - minY) / blockSize)), int(round((initial[0] - minX) / blockSize))], \
-        [int(round((finish[1] - minY) / blockSize)), int(round((finish[0] - minX) / blockSize))], \
+        [int(round((initial[1] ) / blockSize)), int(round((initial[0] ) / blockSize))], \
+        [int(round((finish[1] ) / blockSize)), int(round((finish[0] ) / blockSize))], \
         blockSize, \
-        minX, \
-        minY
+        0, \
+        1000
 
 
 def padronizeXverticalLines(linesY):
@@ -543,7 +546,7 @@ def solveMazeUtil(maze, x, y, sol, finalX, finalY):
     return False
 
 
-def drawSolution(originalImage, solution, blockSize, minXY, minYX, color):
+def drawSolution(originalImage, solution, blockSize, minXYa, minYXa, color):
     # simplifySolution(solutionMatrix)
     # print(solutionMatrix)
     # print(simplifySolution(solutionMatrix))
@@ -559,12 +562,12 @@ def drawSolution(originalImage, solution, blockSize, minXY, minYX, color):
         yBefore = before[1]
         if not before[0] == current[0]:
             drawLine(originalImage, [
-                                    [x * blockSize + minXY + halfBlockSize, y * blockSize + halfBlockSize + minYX,
-                                     xBefore * blockSize + halfBlockSize + minXY, yBefore * blockSize + halfBlockSize + minYX]], color)
+                                    [x * blockSize + halfBlockSize, y * blockSize + halfBlockSize ,
+                                     xBefore * blockSize + halfBlockSize , yBefore * blockSize + halfBlockSize ]], color)
         else:
             drawLine(originalImage, [
-                [x * blockSize + minXY + halfBlockSize, y * blockSize + halfBlockSize + minYX,
-                 xBefore * blockSize + halfBlockSize + minXY, yBefore * blockSize + halfBlockSize + minYX]], color)
+                [x * blockSize + halfBlockSize, y * blockSize + halfBlockSize,
+                 xBefore * blockSize + halfBlockSize, yBefore * blockSize + halfBlockSize]], color)
 
     # for i in range(0, maxX):
     #     for j in range(0, maxY):
